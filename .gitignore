@@ -1,0 +1,28 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+*.log
+.venv/
+**/.venv/
+/backend_django/media/
+/backend_django/staticfiles/
+
+# Node / Next.js
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnp.*.mjs
+
+# Env files
+.env
+.env.local
+.env.*.local
+.npmrc
+.DS_Store
