@@ -2,7 +2,7 @@
 from datetime import date, time
 
 from rest_framework import serializers
-from .models import Negocio, Servicio, Cliente, Cita
+from .models import Negocio, Servicio, Cliente, Cita, Mesa
 
 
 class NegocioSerializer(serializers.ModelSerializer):
@@ -56,6 +56,36 @@ class ClienteSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "creado_en"]
 
 
+class MesaSerializer(serializers.ModelSerializer):
+    negocio_nombre = serializers.CharField(source="negocio.nombre", read_only=True)
+    servicio_nombre = serializers.CharField(source="servicio.nombre", read_only=True)
+
+    class Meta:
+        model = Mesa
+        fields = [
+            "id",
+            "negocio",
+            "negocio_nombre",
+            "servicio",
+            "servicio_nombre",
+            "nombre",
+            "tipo",
+            "capacidad_min",
+            "capacidad_max",
+            "activa",
+        ]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        capacidad_min = attrs.get("capacidad_min")
+        capacidad_max = attrs.get("capacidad_max")
+        if capacidad_min and capacidad_max and capacidad_min > capacidad_max:
+            raise serializers.ValidationError(
+                "capacidad_min no puede ser mayor que capacidad_max."
+            )
+        return attrs
+
+
 class CitaSerializer(serializers.ModelSerializer):
     negocio_nombre = serializers.CharField(source="negocio.nombre", read_only=True)
     servicio_nombre = serializers.CharField(source="servicio.nombre", read_only=True)
@@ -91,11 +121,24 @@ class CitaSerializer(serializers.ModelSerializer):
 
         instancia = self.instance
 
+        negocio = attrs.get("negocio") or (instancia.negocio if instancia else None)
+        servicio = attrs.get("servicio") or (instancia.servicio if instancia else None)
         fecha = attrs.get("fecha") or (instancia.fecha if instancia else None)
         hora_inicio = attrs.get("hora_inicio") or (instancia.hora_inicio if instancia else None)
         hora_fin = attrs.get("hora_fin") or (instancia.hora_fin if instancia else None)
         cliente = attrs.get("cliente") or (instancia.cliente if instancia else None)
         estado = attrs.get("estado") or (instancia.estado if instancia else None)
+        estados_activos = ("pendiente", "confirmada")
+
+        # Consistencia negocio/servicio/cliente
+        if servicio and negocio and servicio.negocio_id != negocio.id:
+            raise serializers.ValidationError(
+                "El servicio seleccionado no pertenece a este negocio."
+            )
+        if cliente and negocio and cliente.negocio_id != negocio.id:
+            raise serializers.ValidationError(
+                "El cliente seleccionado no pertenece a este negocio."
+            )
 
         # 1) Fecha no puede ser pasada
         if fecha and fecha < date.today():
@@ -123,10 +166,32 @@ class CitaSerializer(serializers.ModelSerializer):
                 f"La hora de fin debe estar entre {apertura.strftime('%H:%M')} y {cierre.strftime('%H:%M')}."
             )
 
+        # 3.5) Disponibilidad de mesas activas para el servicio solicitado
+        if servicio:
+            mesas_activas = Mesa.objects.filter(servicio=servicio, activa=True).count()
+            if mesas_activas == 0:
+                raise serializers.ValidationError(
+                    "No hay mesas activas para el servicio seleccionado."
+                )
+
+            if fecha and hora_inicio and hora_fin:
+                citas_mismo_servicio = Cita.objects.filter(
+                    servicio=servicio,
+                    fecha=fecha,
+                    estado__in=estados_activos,
+                    hora_inicio__lt=hora_fin,
+                    hora_fin__gt=hora_inicio,
+                )
+                if instancia:
+                    citas_mismo_servicio = citas_mismo_servicio.exclude(pk=instancia.pk)
+
+                if citas_mismo_servicio.count() >= mesas_activas:
+                    raise serializers.ValidationError(
+                        "No hay mesas disponibles para ese horario en este servicio."
+                    )
+
         # 4) Un cliente no puede tener más de UNA cita activa futura
         #    (pendiente / confirmada y con fecha hoy o mayor)
-        estados_activos = ("pendiente", "confirmada")
-
         if cliente and fecha and estado in estados_activos and fecha >= date.today():
             qs = Cita.objects.filter(
                 cliente=cliente,

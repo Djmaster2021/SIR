@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Negocio, Servicio, Cliente, Cita
+from .models import Negocio, Servicio, Cliente, Cita, Mesa
 
 
 @admin.register(Negocio)
@@ -28,3 +28,10 @@ class CitaAdmin(admin.ModelAdmin):
     list_display = ('cliente', 'servicio', 'negocio', 'fecha', 'hora_inicio', 'hora_fin', 'estado', 'creado_en')
     list_filter = ('negocio', 'fecha', 'estado')
     search_fields = ('cliente__nombre', 'servicio__nombre', 'notas')
+
+
+@admin.register(Mesa)
+class MesaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'negocio', 'servicio', 'tipo', 'capacidad_min', 'capacidad_max', 'activa')
+    list_filter = ('negocio', 'servicio', 'tipo', 'activa')
+    search_fields = ('nombre', 'servicio__nombre', 'negocio__nombre')

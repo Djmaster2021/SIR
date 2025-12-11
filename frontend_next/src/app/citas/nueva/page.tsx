@@ -157,7 +157,7 @@ type Negocio = {
                 name="hora_inicio"
                 min="13:00"
                 max="23:00"
-                step={15 * 60} // 15 minutos
+                step={15 * 60}
                 className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
                 required
               />

@@ -52,6 +52,10 @@ class Mesa(models.Model):
     capacidad_max = models.PositiveIntegerField(default=2)
     activa = models.BooleanField(default=True)
 
+    class Meta:
+        unique_together = ("negocio", "nombre")
+        ordering = ["negocio", "nombre"]
+
     def __str__(self):
         return f"{self.nombre} ({self.negocio.nombre})"
 
@@ -74,6 +78,7 @@ class Cita(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
     notas = models.TextField(blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
+    recordatorio_enviado = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('negocio', 'fecha', 'hora_inicio', 'servicio', 'cliente')

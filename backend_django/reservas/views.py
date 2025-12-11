@@ -1,11 +1,15 @@
 from rest_framework import viewsets, permissions, filters
-from .models import Negocio, Servicio, Cliente, Cita
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .models import Negocio, Servicio, Cliente, Cita, Mesa
 from .serializers import (
     NegocioSerializer,
     ServicioSerializer,
     ClienteSerializer,
     CitaSerializer,
+    MesaSerializer,
 )
+from .utils import suggest_slot
 
 
 # ====== VISTAS SIMPLES PARA DESARROLLO ======
@@ -49,6 +53,18 @@ class ClienteViewSet(viewsets.ModelViewSet):
     ordering_fields = ['creado_en', 'nombre']
 
 
+class MesaViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de mesas físicas en el restaurante.
+    """
+    queryset = Mesa.objects.select_related('negocio', 'servicio').order_by('negocio__nombre', 'nombre')
+    serializer_class = MesaSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nombre', 'tipo', 'servicio__nombre', 'negocio__nombre']
+    ordering_fields = ['nombre', 'capacidad_max']
+
+
 class CitaViewSet(viewsets.ModelViewSet):
     """
     CRUD de citas.
@@ -66,3 +82,67 @@ class CitaViewSet(viewsets.ModelViewSet):
         'notas',
     ]
     ordering_fields = ['fecha', 'hora_inicio', 'creado_en']
+
+
+class AgendaSuggestionView(APIView):
+    """
+    Sugerencia de agenda para un servicio dado, optimizando huecos.
+    """
+
+    def get(self, request):
+        servicio_id = request.query_params.get("servicio")
+        fecha_desde = request.query_params.get("desde")
+        duracion = request.query_params.get("duracion")
+        prefer_hora = request.query_params.get("prefer_hora")
+
+        if not servicio_id:
+            return Response(
+                {"detail": "Parámetro 'servicio' es requerido."},
+                status=400,
+            )
+
+        try:
+            servicio = Servicio.objects.get(pk=servicio_id)
+        except Servicio.DoesNotExist:
+            return Response({"detail": "Servicio no encontrado."}, status=404)
+
+        try:
+            fecha_desde_val = (
+                date.fromisoformat(fecha_desde) if fecha_desde else None
+            )
+        except ValueError:
+            return Response({"detail": "Fecha inválida. Usa YYYY-MM-DD."}, status=400)
+
+        try:
+            prefer_hora_val = (
+                time.fromisoformat(prefer_hora) if prefer_hora else None
+            )
+        except ValueError:
+            return Response({"detail": "Hora inválida. Usa HH:MM."}, status=400)
+
+        duracion_val = None
+        if duracion:
+            try:
+                duracion_val = int(duracion)
+            except ValueError:
+                return Response({"detail": "Duración debe ser numérica (minutos)."}, status=400)
+
+        suggestion = suggest_slot(
+            servicio=servicio,
+            fecha_desde=fecha_desde_val,
+            duracion_minutos=duracion_val,
+            prefer_hora=prefer_hora_val,
+        )
+
+        if not suggestion:
+            return Response({"detail": "Sin disponibilidad en los próximos días."}, status=409)
+
+        return Response(
+            {
+                "servicio": servicio.id,
+                "fecha": suggestion.fecha,
+                "hora_inicio": suggestion.hora_inicio.strftime("%H:%M"),
+                "hora_fin": suggestion.hora_fin.strftime("%H:%M"),
+                "razon": suggestion.razon,
+            }
+        )

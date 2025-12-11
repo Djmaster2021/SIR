@@ -35,10 +35,12 @@ export default function RootLayout({
               <a href="/" className="hover:text-emerald-400">
                 Negocios
               </a>
+              <a href="/citas" className="hover:text-emerald-400">
+                Citas
+              </a>
               {/* Más adelante agregamos estas rutas */}
               {/* <a href="/servicios" className="hover:text-emerald-400">Servicios</a>
-              <a href="/clientes" className="hover:text-emerald-400">Clientes</a>
-              <a href="/citas" className="hover:text-emerald-400">Citas</a> */}
+              <a href="/clientes" className="hover:text-emerald-400">Clientes</a> */}
             </nav>
           </div>
         </header>

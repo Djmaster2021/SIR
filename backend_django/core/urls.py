@@ -10,6 +10,7 @@ def api_root(request):
             "/admin/",
             "/api/negocios/",
             "/api/servicios/",
+            "/api/mesas/",
             "/api/clientes/",
             "/api/citas/",
         ]

@@ -49,6 +49,45 @@
   }
 },
 {
+  "model": "reservas.mesa",
+  "pk": 1,
+  "fields": {
+    "negocio": 1,
+    "servicio": 1,
+    "nombre": "Mesa 1",
+    "tipo": "normal_2",
+    "capacidad_min": 1,
+    "capacidad_max": 2,
+    "activa": true
+  }
+},
+{
+  "model": "reservas.mesa",
+  "pk": 2,
+  "fields": {
+    "negocio": 1,
+    "servicio": 1,
+    "nombre": "Mesa 2",
+    "tipo": "normal_4",
+    "capacidad_min": 2,
+    "capacidad_max": 4,
+    "activa": true
+  }
+},
+{
+  "model": "reservas.mesa",
+  "pk": 3,
+  "fields": {
+    "negocio": 1,
+    "servicio": 3,
+    "nombre": "Mesa VIP",
+    "tipo": "vip_grande",
+    "capacidad_min": 2,
+    "capacidad_max": 10,
+    "activa": true
+  }
+},
+{
   "model": "reservas.cliente",
   "pk": 1,
   "fields": {
@@ -66,12 +105,13 @@
     "negocio": 1,
     "servicio": 3,
     "cliente": 1,
-    "fecha": "2025-12-12",
+    "fecha": "2030-01-05",
     "hora_inicio": "14:00:00",
     "hora_fin": "15:00:00",
-    "estado": "confirmada",
+    "estado": "completada",
     "notas": "DIego Adrian Aceves Magaña quiere una cita para mesa VIP de 2 a 3 de la tarde, el cual requiere atención",
-    "creado_en": "2025-12-11T06:04:26.706Z"
+    "creado_en": "2025-12-11T06:04:26.706Z",
+    "recordatorio_enviado": false
   }
 },
 {
@@ -81,12 +121,13 @@
     "negocio": 1,
     "servicio": 1,
     "cliente": 1,
-    "fecha": "2004-02-11",
-    "hora_inicio": "00:45:00",
-    "hora_fin": "12:00:00",
-    "estado": "pendiente",
+    "fecha": "2030-01-06",
+    "hora_inicio": "15:00:00",
+    "hora_fin": "16:00:00",
+    "estado": "confirmada",
     "notas": "",
-    "creado_en": "2025-12-11T06:45:50.429Z"
+    "creado_en": "2025-12-11T06:45:50.429Z",
+    "recordatorio_enviado": false
   }
 },
 {
@@ -96,12 +137,13 @@
     "negocio": 1,
     "servicio": 1,
     "cliente": 1,
-    "fecha": "2025-12-11",
+    "fecha": "2030-01-07",
     "hora_inicio": "13:00:00",
     "hora_fin": "14:00:00",
     "estado": "confirmada",
     "notas": "",
-    "creado_en": "2025-12-11T07:00:36.010Z"
+    "creado_en": "2025-12-11T07:00:36.010Z",
+    "recordatorio_enviado": false
   }
 }
 ]

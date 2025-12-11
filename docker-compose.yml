@@ -11,7 +11,7 @@ services:
       MYSQL_USER: sir_user
       MYSQL_PASSWORD: SIRmysql_2025!Q8
     ports:
-      - "3307:3306"
+      - "3308:3306"
     volumes:
       - db_data:/var/lib/mysql
     command: [

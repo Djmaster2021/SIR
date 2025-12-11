@@ -22,6 +22,7 @@ pnp.*.mjs
 
 # Env files
 .env
+/backend_django/.env
 .env.local
 .env.*.local
 .npmrc
