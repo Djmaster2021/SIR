@@ -1,0 +1,107 @@
+[
+{
+  "model": "reservas.negocio",
+  "pk": 1,
+  "fields": {
+    "nombre": "Restaurante El Mirador",
+    "propietario": 1,
+    "direccion": "Av. Central 102, Guadalajara",
+    "telefono": "3322332211",
+    "email_contacto": "contacto@elmirador.mx",
+    "activo": true,
+    "creado_en": "2025-12-11T05:54:42.296Z"
+  }
+},
+{
+  "model": "reservas.servicio",
+  "pk": 1,
+  "fields": {
+    "negocio": 1,
+    "nombre": "Mesa para 2",
+    "descripcion": "Mesa estándar para dos personas. Perfecta para comidas rápidas o cenas ligeras.",
+    "duracion_minutos": 60,
+    "precio": "0.00",
+    "activo": true
+  }
+},
+{
+  "model": "reservas.servicio",
+  "pk": 2,
+  "fields": {
+    "negocio": 1,
+    "nombre": "Mesa para 4",
+    "descripcion": "Mesa familiar para grupos pequeños.",
+    "duracion_minutos": 60,
+    "precio": "0.00",
+    "activo": true
+  }
+},
+{
+  "model": "reservas.servicio",
+  "pk": 3,
+  "fields": {
+    "negocio": 1,
+    "nombre": "Mesa VIP",
+    "descripcion": "Mesa reservada en zona exclusiva, con servicio premium.",
+    "duracion_minutos": 90,
+    "precio": "500.00",
+    "activo": true
+  }
+},
+{
+  "model": "reservas.cliente",
+  "pk": 1,
+  "fields": {
+    "negocio": 1,
+    "nombre": "Diego Adrian Aceves Magaña",
+    "email": "diegomag2996@gmail.com",
+    "telefono": "3228892558",
+    "creado_en": "2025-12-11T05:59:43.976Z"
+  }
+},
+{
+  "model": "reservas.cita",
+  "pk": 1,
+  "fields": {
+    "negocio": 1,
+    "servicio": 3,
+    "cliente": 1,
+    "fecha": "2025-12-12",
+    "hora_inicio": "14:00:00",
+    "hora_fin": "15:00:00",
+    "estado": "confirmada",
+    "notas": "DIego Adrian Aceves Magaña quiere una cita para mesa VIP de 2 a 3 de la tarde, el cual requiere atención",
+    "creado_en": "2025-12-11T06:04:26.706Z"
+  }
+},
+{
+  "model": "reservas.cita",
+  "pk": 2,
+  "fields": {
+    "negocio": 1,
+    "servicio": 1,
+    "cliente": 1,
+    "fecha": "2004-02-11",
+    "hora_inicio": "00:45:00",
+    "hora_fin": "12:00:00",
+    "estado": "pendiente",
+    "notas": "",
+    "creado_en": "2025-12-11T06:45:50.429Z"
+  }
+},
+{
+  "model": "reservas.cita",
+  "pk": 3,
+  "fields": {
+    "negocio": 1,
+    "servicio": 1,
+    "cliente": 1,
+    "fecha": "2025-12-11",
+    "hora_inicio": "13:00:00",
+    "hora_fin": "14:00:00",
+    "estado": "confirmada",
+    "notas": "",
+    "creado_en": "2025-12-11T07:00:36.010Z"
+  }
+}
+]
