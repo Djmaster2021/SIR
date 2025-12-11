@@ -32,11 +32,11 @@ export default function RootLayout({
             </div>
 
             <nav className="flex items-center gap-4 text-sm text-slate-300">
-              <a href="/" className="hover:text-emerald-400">
-                Negocios
+              <a href="/reservar" className="hover:text-emerald-400">
+                Reservar
               </a>
               <a href="/citas" className="hover:text-emerald-400">
-                Citas
+                Panel citas
               </a>
               {/* Más adelante agregamos estas rutas */}
               {/* <a href="/servicios" className="hover:text-emerald-400">Servicios</a>

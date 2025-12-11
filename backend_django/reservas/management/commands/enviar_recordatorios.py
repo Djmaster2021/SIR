@@ -10,9 +10,17 @@ from reservas.models import Cita
 class Command(BaseCommand):
     help = "Envía recordatorios de citas para las próximas 24 horas a clientes con email."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--horas",
+            type=int,
+            default=24,
+            help="Ventana de horas hacia adelante para enviar recordatorios (default 24).",
+        )
+
     def handle(self, *args, **options):
         ahora = timezone.localtime()
-        limite = ahora + timedelta(hours=24)
+        limite = ahora + timedelta(hours=options["horas"])
 
         citas = Cita.objects.filter(
             estado__in=("pendiente", "confirmada"),

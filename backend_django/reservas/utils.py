@@ -10,6 +10,7 @@ from .models import Cita, Mesa, Servicio
 OPEN_TIME = time(13, 0)
 CLOSE_TIME = time(23, 0)
 STEP_MINUTES = 15
+TOLERANCIA_LLEGADA_MINUTOS = 15  # ventana de llegada antes de marcar no_show (gestiona el comando marcar_no_show)
 
 
 def _to_minutes(t: time) -> int:
@@ -110,3 +111,43 @@ def suggest_slot(
             )
 
     return None
+
+
+def available_slots(servicio: Servicio, fecha: date, duracion_minutos: Optional[int] = None):
+    """
+    Devuelve lista de slots disponibles (hora_inicio, hora_fin) para un servicio/fecha,
+    usando step de 15 minutos y considerando mesas activas y solapes.
+    """
+    # Jueves cerrado
+    if fecha.weekday() == 3:  # 0=Lunes ... 3=Jueves
+        return []
+
+    duracion = duracion_minutos or servicio.duracion_minutos or 60
+    open_min = _to_minutes(OPEN_TIME)
+    close_min = _to_minutes(CLOSE_TIME)
+    mesas_activas = Mesa.objects.filter(servicio=servicio, activa=True).count()
+    if mesas_activas == 0:
+        return []
+
+    bookings = [
+        (_to_minutes(h_ini), _to_minutes(h_fin))
+        for h_ini, h_fin in Cita.objects.filter(
+            servicio=servicio,
+            fecha=fecha,
+            estado__in=("pendiente", "confirmada"),
+        ).values_list("hora_inicio", "hora_fin")
+    ]
+
+    last_start = close_min - duracion
+    if last_start < open_min:
+        return []
+
+    slots = []
+    for start in range(open_min, last_start + 1, STEP_MINUTES):
+        end = start + duracion
+        overlaps = sum(1 for h_ini, h_fin in bookings if not (h_fin <= start or h_ini >= end))
+        if overlaps >= mesas_activas:
+            continue
+        slots.append((_to_time(start), _to_time(end)))
+
+    return slots

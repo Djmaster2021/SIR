@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from django.core.mail import send_mail
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .models import Cita
+from .google_sync import delete_cita_from_calendar, sync_cita_to_calendar
 
 
 def _build_subject(cita: Cita, created: bool) -> str:
@@ -47,3 +48,14 @@ def enviar_notificacion_cita(sender, instance: Cita, created, **kwargs):
         recipient_list=destinatarios,
         fail_silently=True,  # no romper flujo de API si falla el correo
     )
+
+    # Sincroniza con Google Calendar (si hay credenciales guardadas)
+    sync_cita_to_calendar(instance)
+
+
+@receiver(post_delete, sender=Cita)
+def eliminar_evento_calendar(sender, instance: Cita, **kwargs):
+    """
+    Borra el evento remoto cuando se elimina la cita.
+    """
+    delete_cita_from_calendar(instance)

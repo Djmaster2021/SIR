@@ -111,7 +111,8 @@
     "estado": "completada",
     "notas": "DIego Adrian Aceves Magaña quiere una cita para mesa VIP de 2 a 3 de la tarde, el cual requiere atención",
     "creado_en": "2025-12-11T06:04:26.706Z",
-    "recordatorio_enviado": false
+    "recordatorio_enviado": false,
+    "event_id": null
   }
 },
 {
@@ -127,7 +128,8 @@
     "estado": "confirmada",
     "notas": "",
     "creado_en": "2025-12-11T06:45:50.429Z",
-    "recordatorio_enviado": false
+    "recordatorio_enviado": false,
+    "event_id": null
   }
 },
 {
@@ -143,7 +145,8 @@
     "estado": "confirmada",
     "notas": "",
     "creado_en": "2025-12-11T07:00:36.010Z",
-    "recordatorio_enviado": false
+    "recordatorio_enviado": false,
+    "event_id": null
   }
 }
 ]

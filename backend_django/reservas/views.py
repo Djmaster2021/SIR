@@ -9,7 +9,7 @@ from .serializers import (
     CitaSerializer,
     MesaSerializer,
 )
-from .utils import suggest_slot
+from .utils import suggest_slot, available_slots
 
 
 # ====== VISTAS SIMPLES PARA DESARROLLO ======
@@ -145,4 +145,38 @@ class AgendaSuggestionView(APIView):
                 "hora_fin": suggestion.hora_fin.strftime("%H:%M"),
                 "razon": suggestion.razon,
             }
+        )
+
+
+class AgendaAvailabilityView(APIView):
+    """
+    Devuelve slots disponibles para un servicio y fecha.
+    """
+
+    def get(self, request):
+        servicio_id = request.query_params.get("servicio")
+        fecha_str = request.query_params.get("fecha")
+
+        if not servicio_id or not fecha_str:
+            return Response({"detail": "Parámetros 'servicio' y 'fecha' son requeridos."}, status=400)
+
+        try:
+            servicio = Servicio.objects.get(pk=servicio_id, activo=True)
+        except Servicio.DoesNotExist:
+            return Response({"detail": "Servicio no encontrado o inactivo."}, status=404)
+
+        try:
+            fecha_val = date.fromisoformat(fecha_str)
+        except ValueError:
+            return Response({"detail": "Fecha inválida. Usa YYYY-MM-DD."}, status=400)
+
+        slots = available_slots(servicio, fecha_val)
+        return Response(
+            [
+                {
+                    "hora_inicio": h_ini.strftime("%H:%M"),
+                    "hora_fin": h_fin.strftime("%H:%M"),
+                }
+                for h_ini, h_fin in slots
+            ]
         )

@@ -1,4 +1,4 @@
-// src/app/citas/[id]/page.tsx
+import React from "react";
 import { apiUrl } from "@/lib/api";
 
 type CitaDetalle = {
@@ -26,21 +26,14 @@ async function getCita(id: string): Promise<CitaDetalle | null> {
   return res.json();
 }
 
-const ESTADOS = [
-  "pendiente",
-  "confirmada",
-  "cancelada",
-  "completada",
-  "no_asistio",
-];
+const ESTADOS = ["pendiente", "confirmada", "cancelada", "completada", "no_asistio"];
 
 export default async function CitaDetallePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
-  const cita = await getCita(id);
+  const cita = await getCita(params.id);
 
   if (!cita) {
     return (
@@ -61,20 +54,14 @@ export default async function CitaDetallePage({
           <p className="text-sm text-slate-400">
             {cita.negocio_nombre} — {cita.servicio_nombre}
           </p>
-          <p className="text-sm text-slate-400">
-            Cliente: {cita.cliente_nombre}
-          </p>
+          <p className="text-sm text-slate-400">Cliente: {cita.cliente_nombre}</p>
         </div>
-        <a
-          href="/citas"
-          className="text-sm text-slate-400 hover:text-slate-200"
-        >
+        <a href="/citas" className="text-sm text-slate-400 hover:text-slate-200">
           ← Volver a citas
         </a>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
-        {/* Formulario de edición */}
         <form
           action={`/api/sir/citas/${cita.id}/update`}
           method="post"
@@ -83,9 +70,7 @@ export default async function CitaDetallePage({
           <h2 className="text-lg font-semibold mb-2">Editar cita</h2>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-200">
-              Fecha
-            </label>
+            <label className="block text-sm font-medium text-slate-200">Fecha</label>
             <input
               type="text"
               value={cita.fecha}
@@ -95,9 +80,7 @@ export default async function CitaDetallePage({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-200">
-              Hora
-            </label>
+            <label className="block text-sm font-medium text-slate-200">Hora</label>
             <input
               type="text"
               value={`${cita.hora_inicio} – ${cita.hora_fin}`}
@@ -107,9 +90,7 @@ export default async function CitaDetallePage({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-200">
-              Estado
-            </label>
+            <label className="block text-sm font-medium text-slate-200">Estado</label>
             <select
               name="estado"
               defaultValue={cita.estado}
@@ -124,9 +105,7 @@ export default async function CitaDetallePage({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-200">
-              Notas
-            </label>
+            <label className="block text-sm font-medium text-slate-200">Notas</label>
             <textarea
               name="notas"
               defaultValue={cita.notas}
@@ -145,15 +124,12 @@ export default async function CitaDetallePage({
           </div>
         </form>
 
-        {/* Bloque de acciones peligrosas */}
         <form
           action={`/api/sir/citas/${cita.id}/delete`}
           method="post"
           className="h-fit border border-rose-700/60 rounded-xl bg-rose-950/20 p-6 space-y-3"
         >
-          <h2 className="text-sm font-semibold text-rose-300">
-            Eliminar cita
-          </h2>
+          <h2 className="text-sm font-semibold text-rose-300">Eliminar cita</h2>
           <p className="text-xs text-rose-200/80">
             Esta acción eliminará la cita de forma permanente.
           </p>

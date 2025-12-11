@@ -4,7 +4,8 @@ Stack full‑stack para gestionar reservaciones de restaurante (Django REST + Ne
 
 ## Estructura
 - `backend_django/`: API REST (Django 6 + DRF) con modelos de negocio, servicios, mesas, clientes y citas.
-- `frontend_next/`: Panel Next.js que lista negocios y permite crear/editar/eliminar citas.
+- `frontend_next/`: Landing y panel Next.js (App Router) con flujos `reservar`, `citas`, `config/calendar`.
+- `docs/`: Documentación; ver `docs/structure.md` para árbol y convenciones. `docs/design/` para referencias visuales.
 - `docker-compose.yml`: Levanta MySQL, backend y frontend en modo dev.
 
 ## Arranque rápido
@@ -38,6 +39,17 @@ Stack full‑stack para gestionar reservaciones de restaurante (Django REST + Ne
 - Notificaciones por correo:
   - Se envían al crear/actualizar citas si cliente/propietario tienen email.
   - Recordatorios 24h antes: comando `python manage.py enviar_recordatorios` (programable en cron). Requiere configurar SMTP en `.env`.
+- Endpoint público para clientes:
+  - `POST /api/public/citas/` con payload: negocio, servicio, nombre, email, telefono, fecha, hora_inicio, hora_fin, notas.
+  - Crea el cliente si no existe, aplica las mismas validaciones de disponibilidad y devuelve sugerencia de horario si el slot no está libre.
+  - En frontend hay una página `"/reservar"` que consume este endpoint.
+- Disponibilidad y tolerancia:
+  - `GET /api/agenda/disponibilidad/?servicio=<id>&fecha=YYYY-MM-DD` devuelve slots disponibles considerando duración del servicio y mesas activas.
+  - La hora de llegada tiene 15 minutos de tolerancia; comando `python manage.py marcar_no_show` marca como `no_asistio` citas que no llegaron a tiempo.
+- Google Calendar:
+  - Configura credenciales en `.env.calendar` (no versionado): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_CALENDAR_ID`.
+  - Autoriza en `GET /api/google/authorize/` y completa el flujo en `/api/google/callback/`; se guarda el token en BD.
+  - Las citas crean/actualizan/eliminan eventos en el calendario (con `event_id` en la cita) y añaden al cliente como invitado si tiene email.
 
 Validaciones clave de citas:
 - Fecha no puede ser pasada; horario dentro de 13:00–23:00 y fin > inicio.

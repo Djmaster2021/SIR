@@ -79,9 +79,21 @@ class Cita(models.Model):
     notas = models.TextField(blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     recordatorio_enviado = models.BooleanField(default=False)
+    event_id = models.CharField(max_length=150, blank=True, null=True)
 
     class Meta:
         unique_together = ('negocio', 'fecha', 'hora_inicio', 'servicio', 'cliente')
 
     def __str__(self):
         return f"{self.cliente.nombre} - {self.servicio.nombre} ({self.fecha} {self.hora_inicio})"
+
+
+class CalendarCredential(models.Model):
+    nombre = models.CharField(max_length=150, default="default")
+    calendar_id = models.CharField(max_length=255, default="primary")
+    credentials_json = models.JSONField()
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Calendar {self.calendar_id} ({self.nombre})"
