@@ -34,15 +34,19 @@ def crear_cita_publica(request):
     Crea el cliente si no existe y usa las validaciones estándar de CitaSerializer.
     """
     data = request.data
+
+    def _clean_str(val: str, max_len: int) -> str:
+        return (val or "").strip()[:max_len]
+
     negocio_id = data.get("negocio")
     servicio_id = data.get("servicio")
-    nombre = data.get("nombre")
-    email = data.get("email", "")
-    telefono = data.get("telefono", "")
+    nombre = _clean_str(data.get("nombre"), 150)
+    email = _clean_str(data.get("email", ""), 150)
+    telefono = _clean_str(data.get("telefono", ""), 20)
     fecha = data.get("fecha")
     hora_inicio = data.get("hora_inicio")
     hora_fin = data.get("hora_fin")
-    notas = data.get("notas", "")
+    notas = _clean_str(data.get("notas", ""), 500)
 
     if not all([negocio_id, servicio_id, nombre, fecha, hora_inicio, hora_fin]):
         return Response({"detail": "Faltan campos obligatorios."}, status=status.HTTP_400_BAD_REQUEST)

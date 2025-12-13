@@ -1,152 +1,528 @@
 [
-{
-  "model": "reservas.negocio",
-  "pk": 1,
-  "fields": {
-    "nombre": "Restaurante El Mirador",
-    "propietario": 1,
-    "direccion": "Av. Central 102, Guadalajara",
-    "telefono": "3322332211",
-    "email_contacto": "contacto@elmirador.mx",
-    "activo": true,
-    "creado_en": "2025-12-11T05:54:42.296Z"
+  {
+    "model": "reservas.negocio",
+    "pk": 1,
+    "fields": {
+      "nombre": "Restaurante El Mirador",
+      "propietario": 1,
+      "direccion": "Av. Central 102, Guadalajara",
+      "telefono": "3322332211",
+      "email_contacto": "contacto@elmirador.mx",
+      "activo": true,
+      "creado_en": "2025-12-11T05:54:42.296Z"
+    }
+  },
+  {
+    "model": "reservas.servicio",
+    "pk": 1,
+    "fields": {
+      "negocio": 1,
+      "nombre": "Mesa para 2",
+      "descripcion": "Mesa estándar para dos personas. Perfecta para comidas rápidas o cenas ligeras.",
+      "duracion_minutos": 60,
+      "precio": "0.00",
+      "activo": true
+    }
+  },
+  {
+    "model": "reservas.servicio",
+    "pk": 2,
+    "fields": {
+      "negocio": 1,
+      "nombre": "Mesa para 4",
+      "descripcion": "Mesa familiar para grupos pequeños.",
+      "duracion_minutos": 60,
+      "precio": "0.00",
+      "activo": true
+    }
+  },
+  {
+    "model": "reservas.servicio",
+    "pk": 3,
+    "fields": {
+      "negocio": 1,
+      "nombre": "Mesa VIP",
+      "descripcion": "Mesa reservada en zona exclusiva, con servicio premium.",
+      "duracion_minutos": 90,
+      "precio": "500.00",
+      "activo": true
+    }
+  },
+  {
+    "model": "reservas.servicio",
+    "pk": 4,
+    "fields": {
+      "negocio": 1,
+      "nombre": "Mesa cumpleaños 10+",
+      "descripcion": "Cumpleaños en zona VIP con kit de la página principal (2 botellas nacionales + vino espumoso).",
+      "duracion_minutos": 120,
+      "precio": "4200.00",
+      "activo": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 1,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-01",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 2,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-02",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 3,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-03",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 4,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-04",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 5,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-05",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 6,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-06",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 7,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-07",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 8,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-08",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 9,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-09",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 10,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "nombre": "M2-10",
+      "tipo": "normal_2",
+      "capacidad_min": 1,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 11,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-01",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 12,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-02",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 13,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-03",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 14,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-04",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 15,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-05",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 16,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-06",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 17,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-07",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 18,
+    "fields": {
+      "negocio": 1,
+      "servicio": 2,
+      "nombre": "M4-08",
+      "tipo": "normal_4",
+      "capacidad_min": 2,
+      "capacidad_max": 4,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 19,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP2-01",
+      "tipo": "vip_2",
+      "capacidad_min": 2,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 20,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP2-02",
+      "tipo": "vip_2",
+      "capacidad_min": 2,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 21,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP2-03",
+      "tipo": "vip_2",
+      "capacidad_min": 2,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 22,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP2-04",
+      "tipo": "vip_2",
+      "capacidad_min": 2,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 23,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP2-05",
+      "tipo": "vip_2",
+      "capacidad_min": 2,
+      "capacidad_max": 2,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 24,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP12-01",
+      "tipo": "vip_grande",
+      "capacidad_min": 5,
+      "capacidad_max": 12,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 25,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP12-02",
+      "tipo": "vip_grande",
+      "capacidad_min": 5,
+      "capacidad_max": 12,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 26,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP12-03",
+      "tipo": "vip_grande",
+      "capacidad_min": 5,
+      "capacidad_max": 12,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 27,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP12-04",
+      "tipo": "vip_grande",
+      "capacidad_min": 5,
+      "capacidad_max": 12,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 28,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "nombre": "VIP12-05",
+      "tipo": "vip_grande",
+      "capacidad_min": 5,
+      "capacidad_max": 12,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 29,
+    "fields": {
+      "negocio": 1,
+      "servicio": 4,
+      "nombre": "BD-10-01",
+      "tipo": "cumple_10",
+      "capacidad_min": 10,
+      "capacidad_max": 14,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 30,
+    "fields": {
+      "negocio": 1,
+      "servicio": 4,
+      "nombre": "BD-10-02",
+      "tipo": "cumple_10",
+      "capacidad_min": 10,
+      "capacidad_max": 14,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.mesa",
+    "pk": 31,
+    "fields": {
+      "negocio": 1,
+      "servicio": 4,
+      "nombre": "BD-10-03",
+      "tipo": "cumple_10",
+      "capacidad_min": 10,
+      "capacidad_max": 14,
+      "activa": true
+    }
+  },
+  {
+    "model": "reservas.cliente",
+    "pk": 1,
+    "fields": {
+      "negocio": 1,
+      "nombre": "Diego Adrian Aceves Magaña",
+      "email": "diegomag2996@gmail.com",
+      "telefono": "3228892558",
+      "creado_en": "2025-12-11T05:59:43.976Z"
+    }
+  },
+  {
+    "model": "reservas.cita",
+    "pk": 1,
+    "fields": {
+      "negocio": 1,
+      "servicio": 3,
+      "cliente": 1,
+      "fecha": "2030-01-05",
+      "hora_inicio": "14:00:00",
+      "hora_fin": "15:00:00",
+      "estado": "completada",
+      "notas": "DIego Adrian Aceves Magaña quiere una cita para mesa VIP de 2 a 3 de la tarde, el cual requiere atención",
+      "creado_en": "2025-12-11T06:04:26.706Z",
+      "recordatorio_enviado": false,
+      "event_id": null
+    }
+  },
+  {
+    "model": "reservas.cita",
+    "pk": 2,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "cliente": 1,
+      "fecha": "2030-01-06",
+      "hora_inicio": "15:00:00",
+      "hora_fin": "16:00:00",
+      "estado": "confirmada",
+      "notas": "",
+      "creado_en": "2025-12-11T06:45:50.429Z",
+      "recordatorio_enviado": false,
+      "event_id": null
+    }
+  },
+  {
+    "model": "reservas.cita",
+    "pk": 3,
+    "fields": {
+      "negocio": 1,
+      "servicio": 1,
+      "cliente": 1,
+      "fecha": "2030-01-07",
+      "hora_inicio": "13:00:00",
+      "hora_fin": "14:00:00",
+      "estado": "confirmada",
+      "notas": "",
+      "creado_en": "2025-12-11T07:00:36.010Z",
+      "recordatorio_enviado": false,
+      "event_id": null
+    }
   }
-},
-{
-  "model": "reservas.servicio",
-  "pk": 1,
-  "fields": {
-    "negocio": 1,
-    "nombre": "Mesa para 2",
-    "descripcion": "Mesa estándar para dos personas. Perfecta para comidas rápidas o cenas ligeras.",
-    "duracion_minutos": 60,
-    "precio": "0.00",
-    "activo": true
-  }
-},
-{
-  "model": "reservas.servicio",
-  "pk": 2,
-  "fields": {
-    "negocio": 1,
-    "nombre": "Mesa para 4",
-    "descripcion": "Mesa familiar para grupos pequeños.",
-    "duracion_minutos": 60,
-    "precio": "0.00",
-    "activo": true
-  }
-},
-{
-  "model": "reservas.servicio",
-  "pk": 3,
-  "fields": {
-    "negocio": 1,
-    "nombre": "Mesa VIP",
-    "descripcion": "Mesa reservada en zona exclusiva, con servicio premium.",
-    "duracion_minutos": 90,
-    "precio": "500.00",
-    "activo": true
-  }
-},
-{
-  "model": "reservas.mesa",
-  "pk": 1,
-  "fields": {
-    "negocio": 1,
-    "servicio": 1,
-    "nombre": "Mesa 1",
-    "tipo": "normal_2",
-    "capacidad_min": 1,
-    "capacidad_max": 2,
-    "activa": true
-  }
-},
-{
-  "model": "reservas.mesa",
-  "pk": 2,
-  "fields": {
-    "negocio": 1,
-    "servicio": 1,
-    "nombre": "Mesa 2",
-    "tipo": "normal_4",
-    "capacidad_min": 2,
-    "capacidad_max": 4,
-    "activa": true
-  }
-},
-{
-  "model": "reservas.mesa",
-  "pk": 3,
-  "fields": {
-    "negocio": 1,
-    "servicio": 3,
-    "nombre": "Mesa VIP",
-    "tipo": "vip_grande",
-    "capacidad_min": 2,
-    "capacidad_max": 10,
-    "activa": true
-  }
-},
-{
-  "model": "reservas.cliente",
-  "pk": 1,
-  "fields": {
-    "negocio": 1,
-    "nombre": "Diego Adrian Aceves Magaña",
-    "email": "diegomag2996@gmail.com",
-    "telefono": "3228892558",
-    "creado_en": "2025-12-11T05:59:43.976Z"
-  }
-},
-{
-  "model": "reservas.cita",
-  "pk": 1,
-  "fields": {
-    "negocio": 1,
-    "servicio": 3,
-    "cliente": 1,
-    "fecha": "2030-01-05",
-    "hora_inicio": "14:00:00",
-    "hora_fin": "15:00:00",
-    "estado": "completada",
-    "notas": "DIego Adrian Aceves Magaña quiere una cita para mesa VIP de 2 a 3 de la tarde, el cual requiere atención",
-    "creado_en": "2025-12-11T06:04:26.706Z",
-    "recordatorio_enviado": false,
-    "event_id": null
-  }
-},
-{
-  "model": "reservas.cita",
-  "pk": 2,
-  "fields": {
-    "negocio": 1,
-    "servicio": 1,
-    "cliente": 1,
-    "fecha": "2030-01-06",
-    "hora_inicio": "15:00:00",
-    "hora_fin": "16:00:00",
-    "estado": "confirmada",
-    "notas": "",
-    "creado_en": "2025-12-11T06:45:50.429Z",
-    "recordatorio_enviado": false,
-    "event_id": null
-  }
-},
-{
-  "model": "reservas.cita",
-  "pk": 3,
-  "fields": {
-    "negocio": 1,
-    "servicio": 1,
-    "cliente": 1,
-    "fecha": "2030-01-07",
-    "hora_inicio": "13:00:00",
-    "hora_fin": "14:00:00",
-    "estado": "confirmada",
-    "notas": "",
-    "creado_en": "2025-12-11T07:00:36.010Z",
-    "recordatorio_enviado": false,
-    "event_id": null
-  }
-}
 ]

@@ -42,6 +42,7 @@ class Mesa(models.Model):
         ("normal_4", "Normal 4 personas"),
         ("vip_2", "VIP 2 personas"),
         ("vip_grande", "VIP 5-12 personas"),
+        ("cumple_10", "Cumpleanos 10+ personas"),
     ]
 
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name="mesas")

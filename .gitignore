@@ -24,6 +24,9 @@ pnp.*.mjs
 .env
 /backend_django/.env
 /backend_django/.env.calendar
+.env.production
+.env.prod
+.env.production.local
 .env.local
 .env.*.local
 .npmrc

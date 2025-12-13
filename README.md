@@ -9,7 +9,7 @@ Stack full‑stack para gestionar reservaciones de restaurante (Django REST + Ne
 - `docker-compose.yml`: Levanta MySQL, backend y frontend en modo dev.
 
 ## Arranque rápido
-1) Copia variables: `cp backend_django/.env.example backend_django/.env` y ajusta `SECRET_KEY` / DB si es necesario.  
+1) Copia variables: `cp backend_django/.env.example backend_django/.env` y ajusta `SECRET_KEY` / DB / CORS / CSRF según el host donde corras. Si usarás Calendar, duplica `backend_django/.env.calendar.example` a `backend_django/.env.calendar` y agrega tus credenciales.  
 2) Con Docker: `docker compose up --build`. Backend en `http://localhost:8000`, frontend en `http://localhost:3000`.  
    - El compose aplica migraciones, carga fixtures (`auth_seed.json`, `reservas_seed.json`) y arranca los servicios.  
 3) Sin Docker (dev rápido):
@@ -68,3 +68,12 @@ cd backend_django
 python manage.py test reservas
 ```
 Se cubren reglas de cita (fecha pasada, saturación por mesas, cliente de otro negocio) y validación de capacidades de mesa.
+
+## Despliegue productivo (Docker)
+Usa las imágenes productivas (Gunicorn + build de Next) con `docker-compose.prod.yml`:
+1) Configura envs: `backend_django/.env` (SECRET_KEY, dominios, SMTP), opcional `backend_django/.env.calendar`; copia `frontend_next/.env.production.example` a `.env.production`; copia `infra/.env.prod.example` a `infra/.env.prod`.
+2) Levanta todo:  
+```bash
+docker compose --env-file infra/.env.prod -f docker-compose.prod.yml up -d --build
+```
+Backend en `:8000`, frontend en `:3000`. Más detalles en `infra/README.md`.

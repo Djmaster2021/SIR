@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from reservas.api_auth import EmailOrUsernameAuthToken
 
 
 def api_root(request):
@@ -22,4 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('reservas.urls')),
     path('api-auth/', include('rest_framework.urls')),
+    path('api/auth/login/', EmailOrUsernameAuthToken.as_view(), name='api-login'),
 ]

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import importlib
 from dotenv import load_dotenv
 
 # Ruta base del proyecto
@@ -9,15 +10,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 load_dotenv(BASE_DIR / '.env.calendar')
 
+
+def env_list(key: str, default: list[str]) -> list[str]:
+    """Convierte una lista separada por comas en lista limpia."""
+    raw = os.getenv(key)
+    if not raw:
+        return default
+    return [item.strip() for item in raw.split(',') if item.strip()]
+
+
+def env_bool(key: str, default: bool = False) -> bool:
+    return os.getenv(key, str(default)).lower() in ('true', '1', 'yes')
+
 # ======== CONFIGURACIÓN BÁSICA ========
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-no-usar-en-produccion')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+# Para producción, se debe establecer DEBUG=false en .env
+DEBUG = env_bool('DEBUG', False)
 
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-]
+# Restringe hosts; agrega tu dominio en .env ALLOWED_HOSTS
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+
+# ======== FLAGS / DEPENDENCIAS OPCIONALES ========
+USE_WHITENOISE = os.getenv("USE_WHITENOISE", "true").lower() in ("true", "1", "yes", "")
+WHITENOISE_AVAILABLE = False
+try:
+    importlib.import_module("whitenoise.middleware")
+    WHITENOISE_AVAILABLE = True
+except ImportError:
+    WHITENOISE_AVAILABLE = False
 
 # ======== APPS ========
 
@@ -31,7 +52,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Terceros
+    'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
 
     # Apps propias
     'reservas',
@@ -39,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -46,6 +70,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if USE_WHITENOISE and WHITENOISE_AVAILABLE:
+    # Inserta WhiteNoise después de SecurityMiddleware.
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 ROOT_URLCONF = 'core.urls'
 
@@ -133,25 +161,50 @@ USE_TZ = True
 
 # ======== STATIC / MEDIA ========
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = []
 
-MEDIA_URL = 'media/'
+if USE_WHITENOISE and WHITENOISE_AVAILABLE:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+else:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # ======== DRF ========
 
 REST_FRAMEWORK = {
+    # Por defecto todo requiere auth; los endpoints públicos deben declararlo explícito.
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
 }
 
 
+
+# ======== SEGURIDAD ========
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', not DEBUG)
 
 # ======== DEFAULT ========
 
@@ -163,7 +216,7 @@ EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'sir@localhost')
 
 # ======== GOOGLE CALENDAR ========
@@ -171,3 +224,18 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', '')
 GOOGLE_CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+
+# ======== CORS / CSRF ========
+DEFAULT_LOCAL_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
+]
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', DEFAULT_LOCAL_ORIGINS)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', DEFAULT_LOCAL_ORIGINS)

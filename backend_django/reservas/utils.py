@@ -76,7 +76,11 @@ def suggest_slot(
         if last_start < open_min:
             continue
 
-        for start in range(open_min, last_start + 1, STEP_MINUTES):
+        bookings_start_min = min((h_ini for h_ini, _ in bookings), default=None)
+        # Si ya hay citas en el día y no hay preferencia, arranca buscando desde el inicio de la jornada ocupada.
+        start_min = open_min if bookings_start_min is None or prefer_min is not None else bookings_start_min
+
+        for start in range(start_min, last_start + 1, STEP_MINUTES):
             end = start + duracion
 
             # Verificar concurrencia con mesas activas

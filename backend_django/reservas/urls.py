@@ -8,6 +8,8 @@ from .views import (
     MesaViewSet,
     AgendaSuggestionView,
     AgendaAvailabilityView,
+    PublicMesaAvailabilityView,
+    MercadoPagoPreferenceView,
 )
 from .api_public import crear_cita_publica
 from .views_google import (
@@ -26,6 +28,9 @@ router.register(r'mesas', MesaViewSet, basename='mesa')
 router.register(r'citas', CitaViewSet, basename='cita')
 
 urlpatterns = [
+    # Rutas públicas que no deben colisionar con el router (p.ej. /mesas/disponibilidad/)
+    path('mesas/disponibilidad/', PublicMesaAvailabilityView.as_view(), name='mesas-disponibilidad-publica'),
+    path('pagos/mercadopago/preferencia/', MercadoPagoPreferenceView.as_view(), name='mp-preferencia'),
     path('', include(router.urls)),
     path('agenda/sugerir/', AgendaSuggestionView.as_view(), name='agenda-sugerir'),
     path('agenda/disponibilidad/', AgendaAvailabilityView.as_view(), name='agenda-disponibilidad'),

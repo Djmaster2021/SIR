@@ -2,6 +2,7 @@ import json
 from django.conf import settings
 from django.shortcuts import redirect
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from google_auth_oauthlib.flow import Flow
 import os
@@ -80,6 +81,7 @@ class GoogleCalendarStatus(APIView):
     """
     Devuelve el estado de la integración con Calendar.
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         return Response(calendar_status())
@@ -89,6 +91,7 @@ class GoogleCalendarConfig(APIView):
     """
     Permite actualizar el calendar_id y disparar resync si se desea.
     """
+    permission_classes = [AllowAny]
 
     def post(self, request):
         calendar_id = request.data.get("calendar_id")
@@ -121,6 +124,7 @@ class GoogleCalendarResync(APIView):
     """
     Endpoint para forzar resincronización manual de citas futuras.
     """
+    permission_classes = [AllowAny]
 
     def post(self, request):
         limit = request.data.get("limit") or 200
