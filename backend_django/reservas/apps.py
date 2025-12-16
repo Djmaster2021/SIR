@@ -2,8 +2,9 @@ from django.apps import AppConfig
 
 
 class ReservasConfig(AppConfig):
-    name = 'reservas'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "reservas"
 
     def ready(self):
-        # Importa señales al iniciar la app
+        # Carga señales
         from . import signals  # noqa: F401

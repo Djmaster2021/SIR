@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -27,30 +28,50 @@ def _build_body(cita: Cita) -> str:
     )
 
 
-@receiver(post_save, sender=Cita)
-def enviar_notificacion_cita(sender, instance: Cita, created, **kwargs):
+def _should_skip_for_internal_update(update_fields) -> bool:
     """
-    Envía correo de confirmación/actualización a cliente y propietario si tienen email.
+    Si el save fue solo para campos internos, no mandamos correo ni resincronizamos.
     """
-    destinatarios = []
-    if instance.cliente.email:
-        destinatarios.append(instance.cliente.email)
-    if instance.negocio.propietario.email:
-        destinatarios.append(instance.negocio.propietario.email)
+    if not update_fields:
+        return False
+    update_fields = set(update_fields)
+    internal_only = {"event_id", "recordatorio_enviado"}
+    return update_fields.issubset(internal_only)
 
-    if not destinatarios:
+
+@receiver(post_save, sender=Cita)
+def enviar_notificacion_cita(sender, instance: Cita, created: bool, **kwargs):
+    """
+    Envía correo a cliente/propietario (si tienen email) y sincroniza con Google Calendar.
+    """
+    if kwargs.get("raw"):
         return
 
-    send_mail(
-        subject=_build_subject(instance, created),
-        message=_build_body(instance),
-        from_email=None,  # usa DEFAULT_FROM_EMAIL
-        recipient_list=destinatarios,
-        fail_silently=True,  # no romper flujo de API si falla el correo
-    )
+    if _should_skip_for_internal_update(kwargs.get("update_fields")):
+        return
 
-    # Sincroniza con Google Calendar (si hay credenciales guardadas)
-    sync_cita_to_calendar(instance)
+    def _after_commit():
+        # 1) Correo (si hay destinatarios)
+        destinatarios = []
+        if instance.cliente.email:
+            destinatarios.append(instance.cliente.email)
+        if instance.negocio.propietario.email:
+            destinatarios.append(instance.negocio.propietario.email)
+
+        if destinatarios:
+            send_mail(
+                subject=_build_subject(instance, created),
+                message=_build_body(instance),
+                from_email=None,  # usa DEFAULT_FROM_EMAIL
+                recipient_list=destinatarios,
+                fail_silently=True,
+            )
+
+        # 2) Calendar sync (si hay credenciales guardadas)
+        sync_cita_to_calendar(instance)
+
+    # Ejecutar después de confirmar commit DB
+    transaction.on_commit(_after_commit)
 
 
 @receiver(post_delete, sender=Cita)

@@ -1,17 +1,26 @@
 import json
+import os
+
 from django.conf import settings
 from django.shortcuts import redirect
-from rest_framework.response import Response
+
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from google_auth_oauthlib.flow import Flow
-import os
 
 from .models import CalendarCredential
 from .google_sync import calendar_status, resync_calendar_events
 
 
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+
 def _flow():
+    """
+    Crea el Flow OAuth para Google Calendar usando variables de settings (.env / .env.calendar).
+    """
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
         raise ValueError("Faltan GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI en la configuración.")
 
@@ -28,9 +37,12 @@ def _flow():
         }
     }
 
+    # Permitir HTTP en desarrollo (solo local)
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
     return Flow.from_client_config(
         client_config,
-        scopes=["https://www.googleapis.com/auth/calendar"],
+        scopes=SCOPES,
         redirect_uri=settings.GOOGLE_REDIRECT_URI,
     )
 
@@ -39,10 +51,11 @@ class GoogleAuthStart(APIView):
     """
     Redirige a Google para consentir acceso al Calendar.
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
-            return Response({"detail": "Configura GOOGLE_CLIENT_ID/SECRET en .env"}, status=400)
+            return Response({"detail": "Configura GOOGLE_CLIENT_ID/SECRET en .env.calendar/.env"}, status=400)
 
         flow = _flow()
         auth_url, state = flow.authorization_url(
@@ -56,25 +69,28 @@ class GoogleAuthStart(APIView):
 
 class GoogleAuthCallback(APIView):
     """
-    Recibe el código de Google y guarda las credenciales.
+    Recibe el código de Google y guarda las credenciales en BD (CalendarCredential).
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        state = request.session.get("google_state")
+        # (Opcional) validar state si quieres ser estricto
+        # state = request.session.get("google_state")
+        # flow = _flow()
+        # flow.state = state
+
         flow = _flow()
-        # Permitir HTTP en desarrollo (solo para local)
-        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
         flow.fetch_token(authorization_response=request.build_absolute_uri())
         creds = flow.credentials
 
         CalendarCredential.objects.update_or_create(
             nombre="default",
             defaults={
-                "calendar_id": settings.GOOGLE_CALENDAR_ID,
+                "calendar_id": settings.GOOGLE_CALENDAR_ID or "primary",
                 "credentials_json": json.loads(creds.to_json()),
             },
         )
-        return Response({"detail": "Credenciales guardadas. Calendar sincronizado."})
+        return Response({"detail": "Credenciales guardadas. Calendar listo para sincronizar."})
 
 
 class GoogleCalendarStatus(APIView):
@@ -89,7 +105,7 @@ class GoogleCalendarStatus(APIView):
 
 class GoogleCalendarConfig(APIView):
     """
-    Permite actualizar el calendar_id y disparar resync si se desea.
+    Permite actualizar calendar_id y disparar resync si se desea.
     """
     permission_classes = [AllowAny]
 
@@ -101,11 +117,11 @@ class GoogleCalendarConfig(APIView):
             return Response({"detail": "calendar_id requerido"}, status=400)
 
         cred_obj = CalendarCredential.objects.first()
-        if cred_obj:
-            cred_obj.calendar_id = calendar_id
-            cred_obj.save(update_fields=["calendar_id", "actualizado_en"])
-        else:
+        if not cred_obj:
             return Response({"detail": "Primero autoriza con Google para guardar credenciales."}, status=400)
+
+        cred_obj.calendar_id = calendar_id
+        cred_obj.save(update_fields=["calendar_id", "actualizado_en"])
 
         created = updated = 0
         if do_resync:
@@ -134,7 +150,7 @@ class GoogleCalendarResync(APIView):
             return Response({"detail": "limit debe ser entero"}, status=400)
 
         status = calendar_status()
-        if not status["authorized"]:
+        if not status.get("authorized"):
             return Response({"detail": "Primero autoriza con Google Calendar."}, status=400)
 
         created, updated = resync_calendar_events(limit=limit)

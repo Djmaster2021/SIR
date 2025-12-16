@@ -1,13 +1,52 @@
 from datetime import date, time
 
+import logging
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import Cliente, Servicio, Negocio
 from .serializers import CitaSerializer
 from .utils import suggest_slot
+
+logger = logging.getLogger(__name__)
+
+
+def _send_confirmation_email(cita):
+    destinatarios = []
+    if cita.cliente.email:
+        destinatarios.append(cita.cliente.email)
+    if cita.negocio.propietario and cita.negocio.propietario.email:
+        destinatarios.append(cita.negocio.propietario.email)
+    if cita.negocio.email_contacto:
+        destinatarios.append(cita.negocio.email_contacto)
+
+    if not destinatarios:
+        return
+
+    subject = f"Confirmación de cita – {cita.negocio.nombre}"
+    body = (
+        f"Hola {cita.cliente.nombre},\n\n"
+        f"Tu cita en {cita.negocio.nombre} está registrada.\n"
+        f"Servicio: {cita.servicio.nombre}\n"
+        f"Fecha: {cita.fecha}\n"
+        f"Horario: {cita.hora_inicio.strftime('%H:%M')} - {cita.hora_fin.strftime('%H:%M')}\n"
+        f"Estado: {cita.estado}\n"
+        f"Notas: {cita.notas or 'Sin notas'}\n"
+    )
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            recipient_list=list(dict.fromkeys(destinatarios)),  # evita duplicados
+            fail_silently=False,
+        )
+    except Exception as exc:  # pragma: no cover - solo log
+        logger.exception("No se pudo enviar correo de confirmación: %s", exc)
 
 
 def _get_or_create_cliente(negocio: Negocio, nombre: str, email: str = "", telefono: str = "") -> Cliente:
@@ -92,6 +131,7 @@ def crear_cita_publica(request):
     serializer = CitaSerializer(data=payload)
     if serializer.is_valid():
         cita = serializer.save()
+        _send_confirmation_email(cita)
         return Response(
             {
                 "detail": "Cita creada",

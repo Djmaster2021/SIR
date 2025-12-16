@@ -43,7 +43,7 @@ services:
       CSRF_TRUSTED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
       MP_USE_SANDBOX: "true"
     ports:
-      - "8001:8000"
+      - "8002:8000"
     command: >
       bash -c "
         python scripts/wait_for_db.py &&

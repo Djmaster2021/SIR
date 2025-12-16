@@ -1,33 +1,84 @@
+# =========================
 # Python / Django
+# =========================
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+*.log
+
+# Virtualenvs
+.venv/
+venv/
+env/
+**/.venv/
+**/venv/
+**/env/
+
+# Django DB / local artifacts
 *.sqlite3
 db.sqlite3
-*.log
-.venv/
-**/.venv/
-/backend_django/media/
-/backend_django/staticfiles/
 
+# Django generated files (ajusta si tus rutas cambian)
+backend_django/media/
+backend_django/staticfiles/
+**/media/
+**/staticfiles/
+
+# Migrations cache (opcional)
+# **/migrations/__pycache__/
+
+# =========================
 # Node / Next.js
+# =========================
 node_modules/
 **/node_modules/
 .next/
 **/.next/
 out/
+**/out/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 pnp.*.mjs
 
-# Env files
+# =========================
+# Environment variables
+# =========================
+# Ignore ALL env files everywhere
 .env
-/backend_django/.env
-/backend_django/.env.calendar
-.env.production
-.env.prod
-.env.production.local
-.env.local
-.env.*.local
-.npmrc
+.env.*
+**/.env
+**/.env.*
+
+# But allow example templates to be committed
+!.env.example
+!**/.env.example
+!.env.*.example
+!**/.env.*.example
+
+# =========================
+# OS / Editor
+# =========================
 .DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Misc
+# =========================
+.npmrc
+
+token*.json
+**/token*.json

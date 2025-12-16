@@ -23,8 +23,6 @@ type MesaApi = {
   activa: boolean;
 };
 
-const today = new Date();
-const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 const CLOSED_WEEKDAY = -1; // -1 => sin cierre fijo
 const fallbackNegocios: Negocio[] = [{ id: 1, nombre: "Restaurante El Mirador" }];
 const fallbackServicios: Servicio[] = [
@@ -34,8 +32,54 @@ const fallbackServicios: Servicio[] = [
   { id: 4, nombre: "Mesa cumpleaños 10+", negocio: 1 },
 ];
 
-function formatISO(date: Date) {
-  return date.toISOString().slice(0, 10);
+// ======================
+// Helpers de fecha/hora (timezone-safe)
+// ======================
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function toISODateLocal(date: Date) {
+  // YYYY-MM-DD (local)
+  const y = date.getFullYear();
+  const m = pad2(date.getMonth() + 1);
+  const d = pad2(date.getDate());
+  return `${y}-${m}-${d}`;
+}
+
+function parseLocalDate(dateStr: string) {
+  // "YYYY-MM-DD" -> Date local (NO UTC)
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0);
+}
+
+function formatDatePretty(dateStr: string, locale: string) {
+  const d = parseLocalDate(dateStr);
+  return d.toLocaleDateString(locale, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
+}
+
+function normalizeHHMM(h: string) {
+  // "13:00:00" -> "13:00"
+  if (!h) return "";
+  return h.slice(0, 5);
+}
+
+function isSlotPast(dateStr: string, startHHMM: string, toleranceMin = 15) {
+  // Si es hoy (o cualquier día), compara contra now+tolerancia
+  const [hh, mm] = normalizeHHMM(startHHMM).split(":").map(Number);
+  const d = parseLocalDate(dateStr);
+  d.setHours(hh ?? 0, mm ?? 0, 0, 0);
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + toleranceMin);
+
+  return d.getTime() <= now.getTime();
 }
 
 function daysInMonth(date: Date) {
@@ -56,34 +100,109 @@ function daysInMonth(date: Date) {
 }
 
 function getSlotEnd(selectedSlot: string, slots: Slot[], fallbackSlots: Slot[]) {
-  const slot = slots.find((s) => s.hora_inicio === selectedSlot) || fallbackSlots.find((s) => s.hora_inicio === selectedSlot);
-  return slot?.hora_fin || null;
+  const slot =
+    slots.find((s) => normalizeHHMM(s.hora_inicio) === normalizeHHMM(selectedSlot)) ||
+    fallbackSlots.find((s) => normalizeHHMM(s.hora_inicio) === normalizeHHMM(selectedSlot));
+  return slot?.hora_fin ? normalizeHHMM(slot.hora_fin) : null;
+}
+
+function monthKey(d: Date) {
+  return d.getFullYear() * 12 + d.getMonth();
+}
+
+function inferMesaKeysFromServicio(servicio?: Servicio): string[] {
+  if (!servicio) return [];
+  const n = (servicio.nombre || "").toLowerCase();
+
+  // ✅ Si el servicio es VIP, solo queremos VIP
+  if (n.includes("vip")) {
+    // si es VIP 2 explícito
+    if (n.includes("2")) return ["vip_2"];
+    // si es VIP grande explícito
+    if (n.includes("5") || n.includes("12") || n.includes("grande")) return ["vip_grande"];
+    // si es solo "VIP", mostramos ambos VIP
+    return ["vip_2", "vip_grande"];
+  }
+
+  // cumple
+  if (n.includes("cumple")) return ["cumple_10"];
+
+  // normales
+  if (n.includes("para 4") || n.includes("4")) return ["normal_4"];
+  if (n.includes("para 2") || n.includes("2")) return ["normal_2"];
+
+  return [];
+}
+
+function matchMesaByName(mesaNombre: string, keys: string[]) {
+  const name = (mesaNombre || "").toLowerCase();
+
+  if (keys.includes("cumple_10") && name.includes("cumple")) return true;
+
+  // VIP grande
+  if (keys.includes("vip_grande") && name.includes("vip") && (name.includes("5") || name.includes("12") || name.includes("grande"))) {
+    return true;
+  }
+
+  // VIP 2
+  if (keys.includes("vip_2") && name.includes("vip") && (name.includes(" 2") || name.includes("vip 2") || name.includes("2 "))) {
+    return true;
+  }
+
+  // normales
+  if (keys.includes("normal_4") && (name.includes("4") || name.includes("para 4"))) return true;
+  if (keys.includes("normal_2") && (name.includes("2") || name.includes("para 2"))) return true;
+
+  return false;
 }
 
 export default function ReservarPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [lang, setLang] = useState<Lang>(() => normalizeLang(searchParams.get("lang")));
   const [negocios, setNegocios] = useState<Negocio[]>(fallbackNegocios);
   const [servicios, setServicios] = useState<Servicio[]>(fallbackServicios);
+
+  const todayISO = useMemo(() => toISODateLocal(new Date()), []);
+  const maxISO = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return toISODateLocal(d);
+  }, []);
+
+  const [selectedMesaId, setSelectedMesaId] = useState<string>("");
   const [selectedNegocio, setSelectedNegocio] = useState<string>(String(fallbackNegocios[0].id));
   const [selectedServicio, setSelectedServicio] = useState<string>(String(fallbackServicios[0].id));
-  const [selectedDate, setSelectedDate] = useState<string>(formatISO(today));
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [monthView, setMonthView] = useState<Date>(today);
+  const [monthView, setMonthView] = useState<Date>(parseLocalDate(todayISO));
+  const [overlay, setOverlay] = useState<
+    | {
+        title: string;
+        description?: string;
+        tone?: "success" | "info" | "error";
+      }
+    | null
+  >(null);
+
   const mesaDefault: MesaTipo[] = useMemo(
     () => [
-      { id: "mesa-2", nombre: "Mesa 2 personas", capacidad: 2, total: 10, ocupadas: 5, precio: 0 },
-      { id: "mesa-4", nombre: "Mesa 4 personas", capacidad: 4, total: 8, ocupadas: 3, precio: 0 },
-      { id: "vip", nombre: "VIP / Terraza", capacidad: 6, total: 4, ocupadas: 1, precio: 300 },
+      { id: "normal_2", nombre: "Mesa 2 personas", capacidad: 2, total: 10, ocupadas: 5, precio: 0 },
+      { id: "normal_4", nombre: "Mesa 4 personas", capacidad: 4, total: 8, ocupadas: 3, precio: 0 },
+      { id: "vip_grande", nombre: "Mesa VIP 5-12", capacidad: 12, total: 5, ocupadas: 2, precio: 500 },
+      { id: "vip_2", nombre: "Mesa VIP 2", capacidad: 2, total: 5, ocupadas: 2, precio: 500 },
+      { id: "cumple_10", nombre: "Cumpleaños 10+", capacidad: 14, total: 3, ocupadas: 0, precio: 4200 },
     ],
     [],
   );
+
   const [mesaTipos, setMesaTipos] = useState<MesaTipo[]>(mesaDefault);
+
   const fallbackSlots: Slot[] = useMemo(
     () => [
       { hora_inicio: "13:00", hora_fin: "13:15" },
@@ -114,6 +233,7 @@ export default function ReservarPage() {
     setLang(normalizeLang(searchParams.get("lang")));
   }, [searchParams]);
 
+  // Cargar negocios/servicios
   useEffect(() => {
     (async () => {
       try {
@@ -124,11 +244,13 @@ export default function ReservarPage() {
         const [nJson, sJson] = await Promise.all([nRes.json(), sRes.json()]);
         const negociosData = nJson?.length ? nJson : fallbackNegocios;
         const serviciosData = sJson?.length ? sJson : fallbackServicios;
+
         setNegocios(negociosData);
         setServicios(serviciosData);
+
         setSelectedNegocio(String(negociosData[0]?.id || ""));
         setSelectedServicio(String(serviciosData[0]?.id || ""));
-      } catch (err) {
+      } catch {
         setNegocios(fallbackNegocios);
         setServicios(fallbackServicios);
         setSelectedNegocio(String(fallbackNegocios[0].id));
@@ -137,55 +259,76 @@ export default function ReservarPage() {
     })();
   }, []);
 
+  // Cargar slots (disponibilidad)
   useEffect(() => {
     (async () => {
       if (!selectedServicio || !selectedDate) {
         setSlots([]);
         return;
       }
+
       try {
         const res = await fetch(
           apiUrl(`/api/agenda/disponibilidad/?servicio=${selectedServicio}&fecha=${selectedDate}`),
           { cache: "no-store" },
         );
+
         let data: Slot[] | null = null;
-        if (res.ok) {
-          data = await res.json();
-        }
-        const slotSource = data?.length ? data : fallbackSlots;
-        setSlots(slotSource);
-        setSelectedSlot(slotSource?.[0]?.hora_inicio || "");
-        if (!data?.length) {
-          const nextDate = new Date(selectedDate);
-          nextDate.setDate(nextDate.getDate() + 1);
-          setSugerencia({
-            fecha: formatISO(nextDate),
-            hora_inicio: "13:00",
-            hora_fin: "14:30",
-            razon: "Primera hora disponible al día siguiente",
-          });
-        } else {
+        if (res.ok) data = await res.json();
+
+        const rawSlots = (data?.length ? data : fallbackSlots).map((s) => ({
+          hora_inicio: normalizeHHMM(s.hora_inicio),
+          hora_fin: normalizeHHMM(s.hora_fin),
+        }));
+
+        const filtered = rawSlots.filter((s) => !isSlotPast(selectedDate, s.hora_inicio, 15));
+        const finalSlots = filtered.length ? filtered : [];
+
+        setSlots(finalSlots);
+
+        const first = finalSlots[0]?.hora_inicio || "";
+        setSelectedSlot(first);
+
+        if (finalSlots.length) {
           setSugerencia({
             fecha: selectedDate,
-            hora_inicio: data[0].hora_inicio,
-            hora_fin: data[0].hora_fin,
-            razon: "Primer horario disponible del día",
+            hora_inicio: finalSlots[0].hora_inicio,
+            hora_fin: finalSlots[0].hora_fin,
+            razon: lang === "es" ? "Primer horario disponible del día" : "First available slot of the day",
+          });
+        } else {
+          const nextDate = parseLocalDate(selectedDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          const nextISO = toISODateLocal(nextDate);
+          setSugerencia({
+            fecha: nextISO,
+            hora_inicio: "13:00",
+            hora_fin: "14:30",
+            razon: lang === "es" ? "Ya pasó el horario de hoy. Sugerimos el siguiente día." : "Today is past. Suggesting next day.",
           });
         }
-      } catch (err) {
-        setSlots(fallbackSlots);
-        setSelectedSlot(fallbackSlots[0]?.hora_inicio || "");
-        const nextDate = new Date(selectedDate);
+      } catch {
+        const rawSlots = fallbackSlots.map((s) => ({
+          hora_inicio: normalizeHHMM(s.hora_inicio),
+          hora_fin: normalizeHHMM(s.hora_fin),
+        }));
+        const filtered = rawSlots.filter((s) => !isSlotPast(selectedDate, s.hora_inicio, 15));
+        setSlots(filtered);
+        setSelectedSlot(filtered[0]?.hora_inicio || "");
+
+        const nextDate = parseLocalDate(selectedDate);
         setSugerencia({
-          fecha: formatISO(nextDate),
-          hora_inicio: fallbackSlots[0]?.hora_inicio || "13:00",
-          hora_fin: fallbackSlots[0]?.hora_fin || "14:00",
-          razon: "Mostrando horarios estándar por falta de conexión.",
+          fecha: toISODateLocal(nextDate),
+          hora_inicio: filtered[0]?.hora_inicio || "13:00",
+          hora_fin: filtered[0]?.hora_fin || "14:00",
+          razon: lang === "es" ? "Mostrando horarios estándar por falta de conexión." : "Showing standard slots due to connection issues.",
         });
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedServicio, selectedDate]);
 
+  // Cargar mesas por disponibilidad
   useEffect(() => {
     (async () => {
       if (!selectedServicio || !selectedSlot) {
@@ -200,16 +343,14 @@ export default function ReservarPage() {
 
       try {
         const res = await fetch(
-          apiUrl(
-            `/api/mesas/disponibilidad/?servicio=all&fecha=${selectedDate}&hora_inicio=${selectedSlot}&hora_fin=${slotEnd}`,
-          ),
+          apiUrl(`/api/mesas/disponibilidad/?servicio=all&fecha=${selectedDate}&hora_inicio=${selectedSlot}&hora_fin=${slotEnd}`),
           { cache: "no-store" },
         );
         const data = await res.json().catch(() => []);
         const mesasData: MesaTipo[] = Array.isArray(data) ? data : [];
         const nextMesas = mesasData.length ? mesasData : mesaDefault;
         setMesaTipos(nextMesas);
-      } catch (err) {
+      } catch {
         setMesaTipos(mesaDefault);
       }
     })();
@@ -249,9 +390,7 @@ export default function ReservarPage() {
         timeFallback: "Selecciona un horario",
         submit: "Reservar mesa",
         success: "Reserva creada. Te enviamos confirmación por correo.",
-        errors: {
-          generic: "No pudimos crear la reserva. Intenta con otro horario.",
-        },
+        errors: { generic: "No pudimos crear la reserva. Intenta con otro horario." },
         step2Label: "Paso 2",
         step2Title: "Mesas y resumen",
         step2Note: "Elige el tipo de mesa, revisa el precio y confirma tu reservación.",
@@ -276,6 +415,14 @@ export default function ReservarPage() {
           precio: "Precio",
         },
         monthLocale: "es-MX",
+        overlay: {
+          bookingTitle: "Reserva enviada",
+          bookingBody: "Se mandó el correo con la confirmación y tu mesa quedó apartada.",
+          payTitle: "Redirigiendo a pago",
+          payBody: "Te llevamos a la pasarela segura para completar el pago.",
+          payError: "No pudimos iniciar el pago. Intenta de nuevo.",
+          close: "Cerrar",
+        },
       },
       en: {
         heroBadge: "AI on to suggest times",
@@ -309,9 +456,7 @@ export default function ReservarPage() {
         timeFallback: "Pick a time slot",
         submit: "Book table",
         success: "Booking created. We sent a confirmation email.",
-        errors: {
-          generic: "We couldn't create the booking. Try another time slot.",
-        },
+        errors: { generic: "We couldn't create the booking. Try another time slot." },
         step2Label: "Step 2",
         step2Title: "Tables & summary",
         step2Note: "Choose your table type, review pricing, and confirm your booking.",
@@ -336,10 +481,19 @@ export default function ReservarPage() {
           precio: "Price",
         },
         monthLocale: "en-US",
+        overlay: {
+          bookingTitle: "Booking sent",
+          bookingBody: "We emailed the confirmation and held your table.",
+          payTitle: "Redirecting to payment",
+          payBody: "Taking you to the secure payment page.",
+          payError: "We couldn’t start the payment. Try again.",
+          close: "Close",
+        },
       },
     }),
     [],
   );
+
   const t = copy[lang];
 
   const servicioLabelMap = useMemo<Record<string, { es: string; en: string }>>(
@@ -351,6 +505,7 @@ export default function ReservarPage() {
     }),
     [],
   );
+
   const mesaLabelMap = useMemo(
     () => ({
       normal_2: lang === "es" ? "Mesa 2 personas" : "Table for 2",
@@ -369,41 +524,99 @@ export default function ReservarPage() {
     if (!label) return servicio.nombre;
     return lang === "es" ? label.es : label.en;
   };
-  const formatMesaNombre = (mesa: MesaTipo) => mesaLabelMap[mesa.id] ?? mesa.nombre;
+
+  const formatMesaNombre = (mesa: MesaTipo) => (mesaLabelMap as any)[mesa.id] ?? mesa.nombre;
+
   const handleLangChange = (value: Lang) => {
     setLang(value);
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     params.set("lang", value);
     router.replace(`?${params.toString()}`, { scroll: false });
   };
+
   const selectedNegocioName =
-    negocios.find((n) => String(n.id) === selectedNegocio)?.nombre || (lang === "es" ? t.brand : "El Mirador Restaurant");
+    negocios.find((n) => String(n.id) === selectedNegocio)?.nombre ||
+    (lang === "es" ? t.brand : "El Mirador Restaurant");
+
   const selectedServicioObj = servicios.find((s) => String(s.id) === selectedServicio);
   const selectedServicioName = formatServicioNombre(selectedServicioObj) || t.servicioPlaceholder;
   const selectedServicioPrecio = Number(selectedServicioObj?.precio ?? 0);
-  const mesasResumen = mesaTipos
+
+  const mesaTiposParaMostrar = useMemo(() => {
+    const keys = inferMesaKeysFromServicio(selectedServicioObj);
+    if (!keys.length) return mesaTipos;
+
+    const byId = mesaTipos.filter((m) => keys.includes(m.id));
+    if (byId.length) return byId;
+
+    const byName = mesaTipos.filter((m) => matchMesaByName(m.nombre, keys));
+    return byName.length ? byName : mesaTipos;
+  }, [mesaTipos, selectedServicioObj]);
+
+  // ✅ Asegurar que si la mesa seleccionada ya no existe (cambiaste servicio), se limpie
+  useEffect(() => {
+    if (selectedMesaId && !mesaTiposParaMostrar.some((m) => m.id === selectedMesaId)) {
+      setSelectedMesaId("");
+    }
+  }, [mesaTiposParaMostrar, selectedMesaId]);
+
+  const selectedMesaObj = useMemo(
+    () => mesaTiposParaMostrar.find((m) => m.id === selectedMesaId) || null,
+    [mesaTiposParaMostrar, selectedMesaId],
+  );
+
+  const mesasResumen = mesaTiposParaMostrar
     .map((m) => `${formatMesaNombre(m)}: ${Math.max(m.total - m.ocupadas, 0)}/${m.total}`)
     .join(" · ");
 
   const calendarDays = useMemo(() => daysInMonth(monthView), [monthView]);
-  const isClosedDay = (d: Date) => CLOSED_WEEKDAY >= 0 && d.getDay() === CLOSED_WEEKDAY;
-  const isDisabledDay = (d: Date) => d < today || d > maxDate || d.getMonth() !== monthView.getMonth();
-  const nextAvailable = useMemo(() => {
-    if (slots.length) return { fecha: selectedDate, hora_inicio: slots[0].hora_inicio };
-    if (fallbackSlots.length) return { fecha: selectedDate, hora_inicio: fallbackSlots[0].hora_inicio };
-    return null;
-  }, [slots, fallbackSlots, selectedDate]);
+
+  const isClosedDay = (iso: string) => {
+    if (CLOSED_WEEKDAY < 0) return false;
+    const d = parseLocalDate(iso);
+    return d.getDay() === CLOSED_WEEKDAY;
+  };
+
+  const isDisabledDay = (d: Date) => {
+    const iso = toISODateLocal(d);
+    const outsideMonth = d.getMonth() !== monthView.getMonth();
+    const isPast = iso < todayISO;
+    const isFuture = iso > maxISO;
+    return outsideMonth || isPast || isFuture;
+  };
+
   const monthLabel = useMemo(
     () => monthView.toLocaleString(t.monthLocale, { month: "long", year: "numeric" }),
     [monthView, t.monthLocale],
   );
 
+  const canPrevMonth = useMemo(() => monthKey(monthView) > monthKey(parseLocalDate(todayISO)), [monthView, todayISO]);
+  const canNextMonth = useMemo(() => monthKey(monthView) < monthKey(parseLocalDate(maxISO)), [monthView, maxISO]);
+
+  const nextAvailable = useMemo(() => {
+    if (slots.length) return { fecha: selectedDate, hora_inicio: slots[0].hora_inicio };
+    const filteredFallback = fallbackSlots
+      .map((s) => ({ hora_inicio: normalizeHHMM(s.hora_inicio), hora_fin: normalizeHHMM(s.hora_fin) }))
+      .filter((s) => !isSlotPast(selectedDate, s.hora_inicio, 15));
+    if (filteredFallback.length) return { fecha: selectedDate, hora_inicio: filteredFallback[0].hora_inicio };
+    return null;
+  }, [slots, fallbackSlots, selectedDate]);
+
+  const prettyDate = useMemo(
+    () => (selectedDate ? formatDatePretty(selectedDate, t.monthLocale) : "—"),
+    [selectedDate, t.monthLocale],
+  );
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+
     setSuccess(false);
     setErrorMsg(null);
     setSugerencia(null);
-    const formData = new FormData(e.currentTarget);
+    setOverlay(null);
+
+    const formData = new FormData(form);
     const payload = {
       negocio: selectedNegocio,
       servicio: selectedServicio,
@@ -413,18 +626,29 @@ export default function ReservarPage() {
       fecha: selectedDate,
       hora_inicio: selectedSlot,
       notas: formData.get("notas"),
+      mesa_tipo: selectedMesaId, // ✅ mesa elegida
     };
+
     const res = await fetch("/api/sir/public/crear-cita", {
       method: "POST",
       body: new URLSearchParams(payload as any),
     });
+
     const data = await res.json().catch(() => ({}));
+
     if (res.ok) {
       setSuccess(true);
-      e.currentTarget.reset();
+      setOverlay({
+        title: t.overlay.bookingTitle,
+        description: t.overlay.bookingBody,
+        tone: "success",
+      });
+      form?.reset();
       setSelectedSlot("");
+      setSelectedMesaId("");
       return;
     }
+
     setErrorMsg(data?.msg || t.errors.generic);
     if (data?.sugerencia) setSugerencia(data.sugerencia);
   };
@@ -522,7 +746,10 @@ export default function ReservarPage() {
                 <select
                   name="servicio"
                   value={selectedServicio}
-                  onChange={(e) => setSelectedServicio(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedServicio(e.target.value);
+                    setSelectedMesaId(""); // ✅ reset mesa al cambiar servicio
+                  }}
                   className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
                   required
                 >
@@ -592,7 +819,7 @@ export default function ReservarPage() {
                       prev.setMonth(prev.getMonth() - 1);
                       setMonthView(prev);
                     }}
-                    disabled={monthView.getMonth() === today.getMonth()}
+                    disabled={!canPrevMonth}
                   >
                     ←
                   </button>
@@ -605,7 +832,7 @@ export default function ReservarPage() {
                       next.setMonth(next.getMonth() + 1);
                       setMonthView(next);
                     }}
-                    disabled={monthView > maxDate}
+                    disabled={!canNextMonth}
                   >
                     →
                   </button>
@@ -619,16 +846,21 @@ export default function ReservarPage() {
                       {d}
                     </span>
                   ))}
+
                   {calendarDays.map((d, idx) => {
                     const disabled = isDisabledDay(d);
-                    const iso = formatISO(d);
+                    const iso = toISODateLocal(d);
                     const isSelected = iso === selectedDate;
+
                     return (
                       <button
                         key={idx}
                         type="button"
                         disabled={disabled}
-                        onClick={() => setSelectedDate(iso)}
+                        onClick={() => {
+                          if (iso < todayISO || iso > maxISO) return;
+                          setSelectedDate(iso);
+                        }}
                         className={`relative rounded-lg py-1.5 text-xs transition ${
                           disabled
                             ? "cursor-not-allowed bg-slate-800/40 text-slate-600"
@@ -644,6 +876,30 @@ export default function ReservarPage() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-xs uppercase tracking-wider opacity-70">
+                  {lang === "es" ? "Selección actual" : "Current selection"}
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm">
+                    📅 {selectedDate ? prettyDate : "—"}
+                  </span>
+
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm">
+                    🕒 {selectedSlot ? selectedSlot : t.timeFallback}
+                  </span>
+
+                  {selectedDate && selectedSlot && (
+                    <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-sm">
+                      ✅ {lang === "es" ? "Listo para reservar" : "Ready to book"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 text-xs opacity-70">{t.holdNotice}</div>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-white">{t.availabilityTitle}</p>
@@ -653,46 +909,62 @@ export default function ReservarPage() {
                       : t.availabilityNote}
                   </div>
                 </div>
+
                 <div className="max-h-56 space-y-2 overflow-auto pr-1">
-                  {isClosedDay(new Date(selectedDate)) && (
-                    <p className="text-xs text-amber-400">{t.closedMessage}</p>
-                  )}
-                  {!isClosedDay(new Date(selectedDate)) && slots.length === 0 && (
+                  {isClosedDay(selectedDate) && <p className="text-xs text-amber-400">{t.closedMessage}</p>}
+
+                  {!isClosedDay(selectedDate) && slots.length === 0 && (
                     <div className="space-y-2 text-xs text-slate-300">
-                      <p>{t.emptySlots}</p>
+                      <p>
+                        {lang === "es"
+                          ? "Hoy ya pasó el horario o no hay disponibilidad. Cambia fecha."
+                          : "Today is past or no availability. Pick another date."}
+                      </p>
                       <div className="text-slate-400">{lang === "es" ? "Horarios estándar:" : "Standard hours:"}</div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {fallbackSlots.map((slot, idx) => {
-                          const isSelected = slot.hora_inicio === selectedSlot;
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setSelectedSlot(slot.hora_inicio)}
-                              className={`rounded-lg border px-3 py-2 text-left transition ${
-                                isSelected
-                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-50 shadow-sm"
-                                  : "border-slate-800 bg-slate-900/60 text-slate-100 hover:border-emerald-400"
-                              }`}
-                            >
-                              {slot.hora_inicio} - {slot.hora_fin}
-                            </button>
-                          );
-                        })}
+                        {fallbackSlots
+                          .map((slot) => ({
+                            hora_inicio: normalizeHHMM(slot.hora_inicio),
+                            hora_fin: normalizeHHMM(slot.hora_fin),
+                          }))
+                          .filter((s) => !isSlotPast(selectedDate, s.hora_inicio, 15))
+                          .map((slot, idx) => {
+                            const isSelected = slot.hora_inicio === selectedSlot;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setSelectedSlot(slot.hora_inicio)}
+                                className={`rounded-lg border px-3 py-2 text-left transition ${
+                                  isSelected
+                                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-50 shadow-sm"
+                                    : "border-slate-800 bg-slate-900/60 text-slate-100 hover:border-emerald-400"
+                                }`}
+                              >
+                                {slot.hora_inicio} - {slot.hora_fin}
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
+
                   {slots.map((slot, idx) => {
                     const isSelected = slot.hora_inicio === selectedSlot;
+                    const disabled = isSlotPast(selectedDate, slot.hora_inicio, 15);
+
                     return (
                       <button
                         key={idx}
                         type="button"
+                        disabled={disabled}
                         onClick={() => setSelectedSlot(slot.hora_inicio)}
                         className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                          isSelected
-                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-50 shadow-sm"
-                            : "border-slate-800 bg-slate-900/60 text-slate-100 hover:border-emerald-400"
+                          disabled
+                            ? "cursor-not-allowed border-slate-800 bg-slate-950/60 text-slate-600"
+                            : isSelected
+                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-50 shadow-sm"
+                              : "border-slate-800 bg-slate-900/60 text-slate-100 hover:border-emerald-400"
                         }`}
                       >
                         {slot.hora_inicio} - {slot.hora_fin}
@@ -706,10 +978,6 @@ export default function ReservarPage() {
             <div className="text-xs text-slate-400">
               {t.selectionPrefix}: <span className="font-semibold text-amber-200">{selectedDate}</span> · {t.timePrefix}:{" "}
               <span className="font-semibold text-amber-200">{selectedSlot || t.timeFallback}</span>
-            </div>
-
-            <div className="rounded-2xl border border-amber-300/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-100">
-              {t.holdNotice}
             </div>
 
             <div className="grid gap-3 rounded-2xl border border-emerald-300/30 bg-emerald-400/5 p-4 text-xs text-emerald-50">
@@ -727,7 +995,10 @@ export default function ReservarPage() {
                   <p className="text-emerald-100/80">{sugerencia.razon}</p>
                   <button
                     type="button"
-                    onClick={() => setSelectedSlot(sugerencia.hora_inicio)}
+                    onClick={() => {
+                      if (sugerencia.fecha && sugerencia.fecha !== selectedDate) setSelectedDate(sugerencia.fecha);
+                      setSelectedSlot(normalizeHHMM(sugerencia.hora_inicio));
+                    }}
                     className="self-start rounded-lg border border-emerald-300/40 bg-emerald-300/10 px-3 py-2 text-xs font-semibold text-emerald-50 hover:border-emerald-200"
                   >
                     {t.iaUseSuggested}
@@ -751,25 +1022,35 @@ export default function ReservarPage() {
                 <p className="text-sm font-semibold">{t.mesaTitle}</p>
                 <div className="text-xs text-slate-400">{t.mesaNote}</div>
               </div>
+
+              {/* ✅ AQUÍ ESTÁ EL CAMBIO: tarjetas clickeables + selección */}
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                {mesaTipos.map((mesa, idx) => {
+                {mesaTiposParaMostrar.map((mesa) => {
                   const libres = Math.max(mesa.total - mesa.ocupadas, 0);
-                  const highlighted = idx === 0;
+                  const isSelected = mesa.id === selectedMesaId;
+                  const disabled = libres <= 0;
+
                   return (
-                    <div
+                    <button
                       key={mesa.id}
-                      className={`flex h-full min-h-[130px] flex-col justify-between gap-2 rounded-xl border px-3 py-3 text-left text-sm ${
-                        highlighted
-                          ? "border-emerald-400 bg-emerald-500/10 text-emerald-100 shadow shadow-emerald-500/30"
-                          : "border-slate-800 bg-slate-900/70 text-slate-100"
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setSelectedMesaId(mesa.id)}
+                      className={`flex h-full min-h-[130px] flex-col justify-between gap-2 rounded-xl border px-3 py-3 text-left text-sm transition ${
+                        disabled
+                          ? "cursor-not-allowed border-slate-800 bg-slate-950/40 text-slate-600"
+                          : isSelected
+                            ? "border-emerald-400 bg-emerald-500/10 text-emerald-100 shadow shadow-emerald-500/30"
+                            : "border-slate-800 bg-slate-900/70 text-slate-100 hover:border-emerald-300/60"
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <span className="font-semibold">{formatMesaNombre(mesa)}</span>
-                        <span className={`text-xs font-semibold ${highlighted ? "text-amber-200" : "text-amber-300"}`}>
+                        <span className={`text-xs font-semibold ${isSelected ? "text-amber-200" : "text-amber-300"}`}>
                           {libres} / {mesa.total}
                         </span>
                       </div>
+
                       <div className="space-y-1">
                         <p className="text-xs text-slate-400">
                           {lang === "es" ? `Capacidad ${mesa.capacidad} pax` : `Capacity ${mesa.capacidad} pax`}
@@ -777,11 +1058,21 @@ export default function ReservarPage() {
                         <p className="text-xs text-emerald-100">
                           {lang === "es" ? `Precio: $${mesa.precio}` : `Price: $${mesa.precio}`}
                         </p>
+                        {isSelected && (
+                          <p className="text-[11px] text-emerald-200">{lang === "es" ? "Seleccionada" : "Selected"}</p>
+                        )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
+
+              {/* Hint pro */}
+              {mesaTiposParaMostrar.length > 0 && (
+                <p className="text-[11px] text-slate-400">
+                  {lang === "es" ? "Tip: da click en una mesa para elegirla." : "Tip: click a table to select it."}
+                </p>
+              )}
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-sm text-slate-200">
@@ -794,36 +1085,48 @@ export default function ReservarPage() {
                   {t.summaryFields.servicio}: {selectedServicioName}
                 </p>
                 <p>
-                  {t.summaryFields.fecha}: {selectedDate}
+                  {t.summaryFields.fecha}: {selectedDate}{" "}
+                  <span className="text-slate-400">({selectedDate ? prettyDate : "—"})</span>
                 </p>
                 <p>
                   {t.summaryFields.hora}: {selectedSlot || t.timeFallback}
                 </p>
                 <p>
-                  {t.summaryFields.mesa}: {mesasResumen || "-"}
+                  {t.summaryFields.mesa}:{" "}
+                  {selectedMesaObj
+                    ? formatMesaNombre(selectedMesaObj)
+                    : lang === "es"
+                      ? "Selecciona una mesa"
+                      : "Pick a table"}
                 </p>
               </div>
             </div>
 
             <input type="hidden" name="fecha" value={selectedDate} />
             <input type="hidden" name="hora_inicio" value={selectedSlot} />
+            <input type="hidden" name="mesa_tipo" value={selectedMesaId} />
+
             <div className="grid gap-2">
               <button
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 hover:shadow-emerald-500/40 disabled:from-slate-700 disabled:to-slate-700"
-                disabled={!selectedSlot}
+                disabled={!selectedSlot || !selectedMesaId}
               >
                 {t.submit}
               </button>
+
               <button
                 type="button"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/60 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-100 shadow-inner shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:border-emerald-200"
                 onClick={async () => {
                   setErrorMsg(null);
+                  setOverlay(null);
+
                   if (!selectedServicio || !selectedSlot) {
                     setErrorMsg(lang === "es" ? "Selecciona servicio y horario." : "Select service and time.");
                     return;
                   }
+
                   const payload = {
                     servicio: selectedServicio,
                     precio: selectedServicioPrecio || 0,
@@ -831,20 +1134,24 @@ export default function ReservarPage() {
                     success_url: window.location.origin + "/reservar?lang=" + lang + "&paid=1",
                     failure_url: window.location.origin + "/reservar?lang=" + lang + "&paid=0",
                   };
+
                   try {
                     const res = await fetch(apiUrl("/api/pagos/mercadopago/preferencia/"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(payload),
                     });
+
                     const data = await res.json().catch(() => ({}));
                     const redirect = data?.redirect || data?.sandbox_init_point || data?.init_point;
-                    if (!res.ok || !redirect) {
-                      throw new Error("mp failed");
-                    }
+
+                    if (!res.ok || !redirect) throw new Error("mp failed");
+
+                    setOverlay({ title: t.overlay.payTitle, description: t.overlay.payBody, tone: "info" });
                     window.location.href = redirect;
-                  } catch (err) {
+                  } catch {
                     setErrorMsg(lang === "es" ? "No pudimos iniciar el pago." : "Could not start payment.");
+                    setOverlay({ title: t.overlay.payError, tone: "error" });
                   }
                 }}
               >
@@ -853,6 +1160,47 @@ export default function ReservarPage() {
             </div>
           </section>
         </form>
+
+        {overlay && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+            <div
+              className={`w-full max-w-md rounded-2xl border px-6 py-6 shadow-2xl ${
+                overlay.tone === "error"
+                  ? "border-rose-400/70 bg-rose-500/10 text-rose-50 shadow-rose-500/30"
+                  : overlay.tone === "success"
+                    ? "border-emerald-300/70 bg-emerald-500/10 text-emerald-50 shadow-emerald-500/30"
+                    : "border-sky-300/70 bg-sky-500/10 text-sky-50 shadow-sky-500/30"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-200/80">
+                    {overlay.tone === "error"
+                      ? lang === "es"
+                        ? "Atención"
+                        : "Heads up"
+                      : overlay.tone === "success"
+                        ? lang === "es"
+                          ? "Listo"
+                          : "Done"
+                        : lang === "es"
+                          ? "Continuamos"
+                          : "Next"}
+                  </p>
+                  <h3 className="text-lg font-bold leading-tight">{overlay.title}</h3>
+                  {overlay.description && <p className="mt-2 text-sm text-slate-200/90">{overlay.description}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOverlay(null)}
+                  className="rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white/90 transition hover:-translate-y-0.5 hover:border-white/70"
+                >
+                  {t.overlay.close}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {success && (
           <div className="mt-4 rounded-lg border border-emerald-500/60 bg-emerald-500/10 p-4 text-sm text-emerald-100">
